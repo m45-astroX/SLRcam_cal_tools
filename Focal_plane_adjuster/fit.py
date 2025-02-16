@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 
 # fit.py
-# 2025.02.16 v1.2 by Yuma Aoki
+
+# 2025.02.16 v1.0 by Yuma Aoki
+
 
 import numpy as np
 import pandas as pd
@@ -23,48 +25,41 @@ def combined_function(x, A1, x01, gamma1, A2, x02, gamma2, A3, x03, gamma3, A4, 
             gaussian(x, A4, x04, sigma4))
 
 def main():
-    # コマンドライン引数の解析
-    parser = argparse.ArgumentParser(description="Lorentzian + Gaussian Fitting Script")
 
-    # 必須引数
-    parser.add_argument("csv_file", help="フィッティングするCSVファイルのパス")
+    parser = argparse.ArgumentParser(description="2Lorentzians + Gaussian Fitting Script")
 
-    # 出力ファイル
-    parser.add_argument("-o", "--output", default="fit_result.png", help="出力画像ファイル名（デフォルト: fit_result.png）")
-    parser.add_argument("-p", "--param", default="fit_parameters.csv", help="出力パラメータCSV（デフォルト: fit_parameters.csv）")
+    parser.add_argument("csv_file", help="Path to the csv File for Fitting")
+    parser.add_argument("-o", "--output", default="fit_result.png", help="出力画像ファイル名 (default: fit_result.png)")
+    parser.add_argument("-p", "--param", default="fit_parameters.csv", help="出力パラメータcsv (default: fit_parameters.csv)")
 
-    # 各ピークの初期値
-    parser.add_argument("--lc1", type=float, required=True, metavar="LC1", help="Lorentzian 1 の中心値")
-    parser.add_argument("--ln1", type=float, required=True, metavar="LN1", help="Lorentzian 1 の高さ")
-    parser.add_argument("--lw1", type=float, default=2.0, metavar="LW1", help="Lorentzian 1 の幅（デフォルト: 2.0）")
+    parser.add_argument("--lc1", type=float, required=True, metavar="LC1", help="Center of Lorentzian 1")
+    parser.add_argument("--ln1", type=float, required=True, metavar="LN1", help="Height of Lorentzian 1")
+    parser.add_argument("--lw1", type=float, default=2.0,   metavar="LW1", help="Width of Lorentzian 1 (default=2.0)")
 
-    parser.add_argument("--lc2", type=float, required=True, metavar="LC2", help="Lorentzian 2 の中心値")
-    parser.add_argument("--ln2", type=float, required=True, metavar="LN2", help="Lorentzian 2 の高さ")
-    parser.add_argument("--lw2", type=float, default=2.0, metavar="LW2", help="Lorentzian 2 の幅（デフォルト: 2.0）")
+    parser.add_argument("--lc2", type=float, required=True, metavar="LC2", help="Center of Lorentzian 2")
+    parser.add_argument("--ln2", type=float, required=True, metavar="LN2", help="Height of Lorentzian 2")
+    parser.add_argument("--lw2", type=float, default=2.0,   metavar="LW2", help="Width of Lorentzian 2 (default=2.0)")
 
-    parser.add_argument("--lc3", type=float, required=True, metavar="LC3", help="Lorentzian 3 の中心値")
-    parser.add_argument("--ln3", type=float, required=True, metavar="LN3", help="Lorentzian 3 の高さ")
-    parser.add_argument("--lw3", type=float, default=2.0, metavar="LW3", help="Lorentzian 3 の幅（デフォルト: 2.0）")
+    parser.add_argument("--lc3", type=float, required=True, metavar="LC3", help="Center of Lorentzian 3")
+    parser.add_argument("--ln3", type=float, required=True, metavar="LN3", help="Height of Lorentzian 3")
+    parser.add_argument("--lw3", type=float, default=2.0,   metavar="LW3", help="Width of Lorentzian 3 (default=2.0)")
 
-    parser.add_argument("--gc", type=float, required=True, metavar="GC", help="Gaussian の中心値")
-    parser.add_argument("--gn", type=float, required=True, metavar="GN", help="Gaussian の高さ")
-    parser.add_argument("--gw", type=float, default=2.0, metavar="GW", help="Gaussian の幅（デフォルト: 2.0）")
+    parser.add_argument("--gc", type=float, required=True, metavar="GC", help="Center of Gaussian")
+    parser.add_argument("--gn", type=float, required=True, metavar="GN", help="Height of Gaussian")
+    parser.add_argument("--gw", type=float, default=100.0, metavar="GW", help="Width of Gaussian (default=100.0)")
 
     args = parser.parse_args()
 
-    # CSVファイルの存在確認
     if not os.path.exists(args.csv_file):
-        print("*** Error")
-        print("CSVファイルが存在しません！")
+        print("*** Error ***")
+        print("csvfile does not exist!")
         print("abort.")
         return
 
-    # CSVデータの読み込み
     df = pd.read_csv(args.csv_file)
     x_data = df.iloc[:, 0].values
     y_data = df.iloc[:, 1].values
 
-    # 初期パラメータの設定
     initial_params = [
         args.ln1, args.lc1, args.lw1,
         args.ln2, args.lc2, args.lw2,
@@ -72,46 +67,39 @@ def main():
         args.gn, args.gc, args.gw
     ]
 
-    # フィッティングの実行
     popt, pcov = curve_fit(combined_function, x_data, y_data, p0=initial_params)
 
-    # フィッティング結果を取得
     ln1_fit, lc1_fit, lw1_fit, ln2_fit, lc2_fit, lw2_fit, ln3_fit, lc3_fit, lw3_fit, gn_fit, gc_fit, gw_fit = popt
 
-    print("\n=== フィッティング結果 ===")
-    print(f"Lorentzian 1: 中心 = {lc1_fit:.3f}, 高さ = {ln1_fit:.3f}, 幅 = {lw1_fit:.3f}")
-    print(f"Lorentzian 2: 中心 = {lc2_fit:.3f}, 高さ = {ln2_fit:.3f}, 幅 = {lw2_fit:.3f}")
-    print(f"Lorentzian 3: 中心 = {lc3_fit:.3f}, 高さ = {ln3_fit:.3f}, 幅 = {lw3_fit:.3f}")
-    print(f"Gaussian: 中心 = {gc_fit:.3f}, 高さ = {gn_fit:.3f}, 幅 = {gw_fit:.3f}")
+    print(f"Lorentzian1 : LC = {lc1_fit:.3f}, LN = {ln1_fit:.3f}, LW = {lw1_fit:.3f}")
+    print(f"Lorentzian2 : LC = {lc2_fit:.3f}, LN = {ln2_fit:.3f}, LW = {lw2_fit:.3f}")
+    print(f"Lorentzian3 : LC = {lc3_fit:.3f}, LN = {ln3_fit:.3f}, LW = {lw3_fit:.3f}")
+    print(f"Gaussian    : GC = {gc_fit:.3f}, GN = {gn_fit:.3f}, GW = {gw_fit:.3f}")
 
-    # フィッティング結果をプロット
     x_fit = np.linspace(min(x_data), max(x_data), 500)
     y_fit = combined_function(x_fit, *popt)
 
     plt.figure(figsize=(8, 6))
-    plt.scatter(x_data, y_data, label="Original Data", color="black", s=10)
-    plt.plot(x_fit, y_fit, label="Fitted Curve", color="red", linewidth=2)
+    #plt.scatter(x_data, y_data, label="Original Data", color="black", s=10)
+    #plt.plot(x_fit, y_fit, label="Fitted Curve", color="red", linewidth=2)
+    #plt.title("Lorentzian + Lorentzian + Lorentzian + Gaussian Fit")
     plt.xlabel("X")
     plt.ylabel("Y")
-    plt.title("Lorentzian + Lorentzian + Lorentzian + Gaussian Fit")
     plt.legend()
     plt.grid()
 
-    # グラフ保存
     plt.savefig(args.output)
     plt.close()
 
-    # フィッティングデータをCSVに保存
     fit_results = pd.DataFrame({
-        "Function": ["Lorentzian 1", "Lorentzian 2", "Lorentzian 3", "Gaussian"],
+        "Function": ["Lorentzian1", "Lorentzian2", "Lorentzian3", "Gaussian"],
         "Center": [lc1_fit, lc2_fit, lc3_fit, gc_fit],
         "Height": [ln1_fit, ln2_fit, ln3_fit, gn_fit],
         "Width": [lw1_fit, lw2_fit, lw3_fit, gw_fit]
     })
     fit_results.to_csv(args.param, index=False)
 
-    print(f"\nフィッティング結果のプロットを {args.output} に保存しました。")
-    print(f"フィッティングパラメータを {args.param} に保存しました。")
 
 if __name__ == "__main__":
+    
     main()

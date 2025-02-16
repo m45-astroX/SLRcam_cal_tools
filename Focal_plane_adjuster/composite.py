@@ -1,82 +1,89 @@
 #!/usr/bin/env python3
 
 # composite.py
+# - NEFファイルをコンポジットするスクリプト
 
-# 2025.02.15 v1.0 by Yuma Aoki
+# 2025.02.16 v1.0 by Yuma Aoki
 
 
-import rawpy
 import numpy as np
 import argparse
 import cv2
 import os
+import rawpy
 import imageio.v2 as imageio
+
 
 def load_nef_images_from_directory(directory):
     
     nef_files = sorted([os.path.join(directory, f) for f in os.listdir(directory) if f.lower().endswith('.nef')])
-    
+
     if not nef_files:
-        print("*** Error")
-        print("Infile does not exist!")
+        print("*** Error ***")
+        print("No NEF files found.")
         print("abort.")
         return None
 
     images = []
     for nef_file in nef_files:
-        with rawpy.imread(nef_file) as raw:
-            rgb_image = raw.postprocess()
-            images.append(rgb_image)
-        print(f"Read: {nef_file}")
+        try:
+            with rawpy.imread(nef_file) as raw:
+                image = raw.postprocess(output_bps=16)
+                image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+                images.append(image)
+                print(f"Load: {nef_file}")
+        except Exception as e:
+            print("*** Error ***")
+            print(f"Failed to load: {nef_file}")
+            print("skip.")
+            continue
 
     return images if images else None
+
 
 def composite_images(images, method):
     
     if not images:
-        print("*** Error")
-        print("Image does not exist!")
+        print("*** Error ***")
+        print("No valid images to process.")
         print("abort.")
         return None
 
-    # Read the size of images
-    height, width, _ = images[0].shape
     stack = np.array(images, dtype=np.float32)
 
-    if method == "mean" or method == "0" :
+    if method == "mean":
         result = np.mean(stack, axis=0)
-    elif method == "max" or method == "1" :
+    elif method == "max":
         result = np.max(stack, axis=0)
-    elif method == "min" or method == "2" :
+    elif method == "min":
         result = np.min(stack, axis=0)
     else:
-        print("*** Error")
-        print("Method must be 0, 1 or 2!")
+        print("*** Error ***")
+        print("Invalid composite method.")
         print("abort.")
         return None
 
-    return np.clip(result, 0, 255).astype(np.uint8)
+    return np.clip(result, 0, 65535).astype(np.uint16)
+
 
 def main():
-    
-    # Method
-    method = "mean"
 
-    parser = argparse.ArgumentParser(description="This script composites nef files.")
-    parser.add_argument("indir", help="The directory path where NEF files exist.")
-    parser.add_argument("-o", "--output", default="composite_out.tif", help="The path of outfile(tiff format)")
+    parser = argparse.ArgumentParser()
+    parser.add_argument("indir", help="")
+    parser.add_argument("-o", "--outfile", default="composite.tif", help="")
+    parser.add_argument("-m", "--method", choices=["mean", "max", "min"], default="mean", help="")
+
     args = parser.parse_args()
 
-    images = load_nef_images_from_directory(args.directory)
+    images = load_nef_images_from_directory(args.indir)
 
     if images:
-        
-        composite_image = composite_images(images, method)
+        composite_image = composite_images(images, args.method)
 
         if composite_image is not None:
-            
             imageio.imwrite(args.output, composite_image)
-            print(f"Output: {args.output}")
+            print(f"Save: {args.output}")
+
 
 if __name__ == "__main__":
 
